@@ -1,8 +1,10 @@
 # SynDiff
 
-Official PyTorch implementation of SynDiff described in the [paper](https://arxiv.org/abs/2207.08208).
+Official PyTorch implementation of SynDiff described in the [paper](https://ieeexplore.ieee.org/document/10167641).
 
-Muzaffer Özbey, Onat Dalmaz, Salman UH Dar, Hasan A Bedel, Şaban Özturk, Alper Güngör, Tolga Çukur, "Unsupervised Medical Image Translation with Adversarial Diffusion Models", arXiv 2022.
+Muzaffer Özbey*, Onat Dalmaz*, Salman UH Dar, Hasan A Bedel, Şaban Özturk, Alper Güngör, Tolga Çukur, "Unsupervised Medical Image Translation With Adversarial Diffusion Models," in IEEE Transactions on Medical Imaging, vol. 42, no. 12, pp. 3524-3539, Dec. 2023, doi: 10.1109/TMI.2023.3290149.
+
+*: equal contribution
 
 <img src="./figures/adv_diff.png" width="600px">
 
@@ -76,19 +78,22 @@ python test.py --image_size 256 --exp exp_syndiff --num_channels 2 --num_channel
 Preliminary versions of SynDiff are presented in [NeurIPS Medical Imaging Meets](https://www.cse.cuhk.edu.hk/~qdou/public/medneurips2022/105.pdf) and IEEE ISBI 2023.
 You are encouraged to modify/distribute this code. However, please acknowledge this code and cite the paper appropriately.
 ```
-@misc{özbey2023unsupervised,
-      title={Unsupervised Medical Image Translation with Adversarial Diffusion Models}, 
-      author={Muzaffer Özbey and Onat Dalmaz and Salman UH Dar and Hasan A Bedel and Şaban Özturk and Alper Güngör and Tolga Çukur},
-      year={2023},
-      eprint={2207.08208},
-      archivePrefix={arXiv},
-      primaryClass={eess.IV}
-}
+@ARTICLE{ozbey_dalmaz_syndiff_2024,
+  author={Özbey, Muzaffer and Dalmaz, Onat and Dar, Salman U. H. and Bedel, Hasan A. and Özturk, Şaban and Güngör, Alper and Çukur, Tolga},
+  journal={IEEE Transactions on Medical Imaging}, 
+  title={Unsupervised Medical Image Translation With Adversarial Diffusion Models}, 
+  year={2023},
+  volume={42},
+  number={12},
+  pages={3524-3539},
+  keywords={Biological system modeling;Computational modeling;Training;Generative adversarial networks;Image synthesis;Task analysis;Generators;Medical image translation;synthesis;unsupervised;unpaired;adversarial;diffusion;generative},
+  doi={10.1109/TMI.2023.3290149}}
+
 
 ```
-For any questions, comments and contributions, please contact Muzaffer Özbey (muzafferozbey94[at]gmail.com ) <br />
+For any questions, comments and contributions, please contact Muzaffer Özbey (muzafferozbey94[at]gmail.com) or Onat Dalmaz (onat[at]stanford.edu) <br />
 
-(c) ICON Lab 2022
+(c) ICON Lab 2023
 
 <br />
 
