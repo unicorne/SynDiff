@@ -1,9 +1,11 @@
-
+import sys
+path_to_pip_installs = "/tmp/test_env"
+if path_to_pip_installs not in sys.path:
+    sys.path.insert(0, path_to_pip_installs)
 
 import argparse
 import torch
 import numpy as np
-
 import os
 
 import torch.autograd as autograd
@@ -19,6 +21,7 @@ from torch.multiprocessing import Process
 import torch.distributed as dist
 import shutil
 from skimage.metrics import peak_signal_noise_ratio as psnr
+
 
 
 
@@ -181,7 +184,6 @@ def sample_from_model(coefficients, generator, n_time, x_init, T, opt):
         
     return x
 
-#%%
 def train_syndiff(rank, gpu, args):
 
     
@@ -727,8 +729,9 @@ def init_processes(rank, size, fn, args):
 
 def cleanup():
     dist.destroy_process_group()    
-#%%
+
 if __name__ == '__main__':
+    print('Syndiff training script')
     parser = argparse.ArgumentParser('syndiff parameters')
     parser.add_argument('--seed', type=int, default=1024,
                         help='seed used for initialization')
