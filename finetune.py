@@ -249,8 +249,19 @@ def apply_overrides(defaults: TrainDefaults, fixed: Dict[str, Any]) -> Dict[str,
 
 
 def sample_from_space(trial: "optuna.trial.Trial") -> Dict[str, Any]:
-    sampled = {}
+
+    sampled: Dict[str, Any] = {}
+
+    # 1) Sample use_geometric first (so we can branch the sensitive params)
+    ug_kind, ug_choices = SEARCH_SPACE["use_geometric"]
+    assert ug_kind == "categorical"
+    sampled["use_geometric"] = trial.suggest_categorical("use_geometric", ug_choices)
+
+    # 2) Sample the rest from your SEARCH_SPACE, except the conditional ones we’ll handle later
+    skip = {"use_geometric", "num_timesteps", "beta_min", "beta_max"}
     for name, spec in SEARCH_SPACE.items():
+        if name in skip:
+            continue
         kind = spec[0]
         if kind == "log_uniform":
             low, high = spec[1], spec[2]
@@ -266,7 +277,36 @@ def sample_from_space(trial: "optuna.trial.Trial") -> Dict[str, Any]:
             sampled[name] = trial.suggest_categorical(name, choices)
         else:
             raise ValueError(f"Unknown space kind: {kind}")
+
+    # 3) Conditionally sample the diffusion-schedule params with safer ranges
+    if sampled["use_geometric"]:
+        # geometric schedule is touchy → keep timesteps >=5 and narrower beta ranges
+        sampled["num_timesteps"] = trial.suggest_int("num_timesteps", 5, 8)
+        sampled["beta_min"] = trial.suggest_float("beta_min", 1e-3, 1e-1, log=True)
+        sampled["beta_max"] = trial.suggest_float("beta_max", 5e-1, 1e1, log=True)
+    else:
+        # vp schedule is stabler → still avoid extremes
+        sampled["num_timesteps"] = trial.suggest_int("num_timesteps", 4, 8)
+        sampled["beta_min"] = trial.suggest_float("beta_min", 1e-3, 2e-1, log=True)
+        sampled["beta_max"] = trial.suggest_float("beta_max", 1.0, 2.0e1, log=True)
+
+    # 4) Sanity constraints → prune unstable configs early (prevents NaN blowups)
+    if sampled["beta_max"] <= sampled["beta_min"]:
+        raise optuna.TrialPruned("beta_max must be > beta_min")
+
+    beta_ratio = sampled["beta_max"] / sampled["beta_min"]
+    trial.set_user_attr("beta_ratio", beta_ratio)
+    if beta_ratio > 1e3:
+        raise optuna.TrialPruned("beta_max/beta_min ratio too large")
+
+    # Keep D/G lrs in a reasonable band (helps GAN stability)
+    lr_ratio = sampled["lr_d"] / sampled["lr_g"]
+    trial.set_user_attr("lr_ratio", lr_ratio)
+    if not (0.25 <= lr_ratio <= 4.0):
+        raise optuna.TrialPruned("lr_d/lr_g out of [0.25, 4.0]")
+
     return sampled
+
 
 
 def namespace_for_trial(trial_cfg: Dict[str, Any]) -> SimpleNamespace:
