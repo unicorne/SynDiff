@@ -7,6 +7,7 @@ import argparse
 import torch
 import numpy as np
 import os
+import copy
 
 import torch.autograd as autograd
 import torch.nn as nn
@@ -241,6 +242,10 @@ def train_syndiff(rank, gpu, args):
     to_range_0_1 = lambda x: (x + 1.) / 2.
 
     #networks performing reverse denoising
+    #args_diff = copy.deepcopy(args)
+    #args_diff.num_channels = 2
+    print("Creating networks...")
+    print("Num channels for NCSNpp: ", args.num_channels)
     gen_diffusive_1 = NCSNpp(args).to(device)
     gen_diffusive_2 = NCSNpp(args).to(device)  
     #networks performing translation
@@ -676,14 +681,14 @@ def train_syndiff(rank, gpu, args):
 
         for iteration, (x_val , y_val) in enumerate(data_loader_val): 
         
-            real_data = x_val.to(device, non_blocking=True)
-            source_data = y_val.to(device, non_blocking=True)
+            real_data = x_val.to(device, non_blocking=True) # contrast1
+            source_data = y_val.to(device, non_blocking=True) # contrast2
             
             x1_t = torch.cat((torch.randn_like(real_data),source_data),axis=1)
             #diffusion steps
             fake_sample1 = sample_from_model(pos_coeff, gen_diffusive_1, args.num_timesteps, x1_t, T, args)            
-            fake_sample1 = to_range_0_1(fake_sample1) ; fake_sample1 = fake_sample1/fake_sample1.mean()
-            real_data = to_range_0_1(real_data) ; real_data = real_data/real_data.mean()
+            fake_sample1 = to_range_0_1(fake_sample1) ; #fake_sample1 = fake_sample1/fake_sample1.mean() # synthetic contrast1
+            real_data = to_range_0_1(real_data) #; real_data = real_data/real_data.mean()
 
             fake_sample1=fake_sample1.cpu().numpy()
             real_data=real_data.cpu().numpy()
@@ -697,12 +702,12 @@ def train_syndiff(rank, gpu, args):
             source_data = y_val.to(device, non_blocking=True)
             
             x1_t = torch.cat((torch.randn_like(real_data),source_data),axis=1)
-            #diffusion steps
-            fake_sample1 = sample_from_model(pos_coeff, gen_diffusive_1, args.num_timesteps, x1_t, T, args)
+            #diffusion steps (gen_diffusive_2 ????)
+            fake_sample1 = sample_from_model(pos_coeff, gen_diffusive_2, args.num_timesteps, x1_t, T, args)
 
             
-            fake_sample1 = to_range_0_1(fake_sample1) ; fake_sample1 = fake_sample1/fake_sample1.mean()
-            real_data = to_range_0_1(real_data) ; real_data = real_data/real_data.mean()
+            fake_sample1 = to_range_0_1(fake_sample1) ; #fake_sample1 = fake_sample1/fake_sample1.mean()
+            real_data = to_range_0_1(real_data) #; real_data = real_data/real_data.mean()
             
             fake_sample1=fake_sample1.cpu().numpy()
             real_data=real_data.cpu().numpy()
@@ -710,7 +715,10 @@ def train_syndiff(rank, gpu, args):
             
             val_psnr_values[1,epoch, iteration] = psnr(real_data,fake_sample1, data_range=real_data.max())
 
+        print("Validation PSNR Values:")
+        print("Class 1:")
         print(np.nanmean(val_psnr_values[0,epoch,:]))
+        print("Class 2:")
         print(np.nanmean(val_psnr_values[1,epoch,:]))
         np.save('{}/val_l1_loss.npy'.format(exp_path), val_l1_loss)
         np.save('{}/val_psnr_values.npy'.format(exp_path), val_psnr_values)               
@@ -740,7 +748,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--image_size', type=int, default=32,
                             help='size of image')
-    parser.add_argument('--num_channels', type=int, default=3,
+    parser.add_argument('--num_channels', type=int, default=2,
                             help='channel of image')
     parser.add_argument('--centered', action='store_false', default=True,
                             help='-1,1 scale')
@@ -802,7 +810,7 @@ if __name__ == '__main__':
     parser.add_argument('--ngf', type=int, default=64)
 
     parser.add_argument('--lr_g', type=float, default=1.5e-4, help='learning rate g')
-    parser.add_argument('--lr_d', type=float, default=1e-4, help='learning rate d')
+    parser.add_argument('--lr_d', type=float, default=0.5e-4, help='learning rate d')
     parser.add_argument('--beta1', type=float, default=0.5,
                             help='beta1 for adam')
     parser.add_argument('--beta2', type=float, default=0.9,

@@ -268,17 +268,17 @@ if __name__ == "__main__":
     #args = parser.parse_args()
 
     input_hdf5 = "/home/students/studweilc1/SynthRegGAN/data/data_T1_mapping_fl2d.h5"
-    output_hdf5 = "synthetic_data/synth_T1_val.h5"
-    ckpt_path = "my_results/exp_syndiff2/content.pth"
+    output_hdf5 = "synthetic_data/synth_T1_mapping_fl2d_group3_test.h5"
+    ckpt_path = "my_results_group/exp_syndiff_T1fl2d3/content.pth"
 
     cfg_filters_t1 = {
     "contrast__in": ["T1_mapping_fl2d"],
     "non_zero": True,
     "image_dim": 0,
     "image_type": "s",
-    "split":"val",
+    "split":"test",
     #"patient_id": "P_01_A",  # IGNORE
-    #"z_dim__in": [14,16,18],              # IGNORE
+    #"z_dim__in": [14,16,18], # IGNORE
     }
 
     cfg_transform = {
@@ -290,6 +290,18 @@ if __name__ == "__main__":
 
     ]
     }
+
+    cfg_transform = {
+    "eval": [
+        {
+        "GroupMinMaxNormalize": {
+            "stats_path": "/home/students/studweilc1/SynthRegGAN/data/minmax_values.json"
+        }
+        },
+
+    ]
+    }
+    
     num_timesteps = 4
     batch_size = 4
     device = "cpu"
