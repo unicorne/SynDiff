@@ -23,7 +23,8 @@ import torch.distributed as dist
 import shutil
 from skimage.metrics import peak_signal_noise_ratio as psnr
 
-
+def _finite(*tensors):
+    return all([torch.isfinite(t).all() for t in tensors if t is not None])
 
 
 def copy_source(file, output_dir):
@@ -74,10 +75,12 @@ def get_sigma_schedule(args, device):
         var = var_func_vp(t, beta_min, beta_max)
     alpha_bars = 1.0 - var
     betas = 1 - alpha_bars[1:] / alpha_bars[:-1]
+
     
     first = torch.tensor(1e-8)
     betas = torch.cat((first[None], betas)).to(device)
     betas = betas.type(torch.float32)
+    betas = betas.clamp_(min=1e-8, max=0.999)  # NEWWW
     sigmas = betas**0.5
     a_s = torch.sqrt(1-betas)
     return sigmas, a_s, betas
@@ -373,7 +376,7 @@ def train_syndiff(rank, gpu, args):
         global_step, epoch, init_epoch = 0, 0, 0
     
     
-    for epoch in range(init_epoch, args.num_epoch+1):
+    for epoch in range(init_epoch, args.num_epoch):
         train_sampler.set_epoch(epoch)
        
         for iteration, (x1, x2) in enumerate(data_loader):
@@ -412,6 +415,17 @@ def train_syndiff(rank, gpu, args):
             errD2_real = F.softplus(-D2_real)
             errD2_real = errD2_real.mean()   
             errD_real = errD1_real + errD2_real
+
+
+
+            if not _finite(errD_real): # NEWW
+                if rank == 0:
+                    print("[warn] non-finite errD_real; skipping batch")
+                disc_diffusive_1.zero_grad(set_to_none=True)
+                disc_diffusive_2.zero_grad(set_to_none=True)
+                continue # NEWW
+
+
             errD_real.backward(retain_graph=True)
             
             if args.lazy_reg is None:
@@ -429,6 +443,13 @@ def train_syndiff(rank, gpu, args):
                                 ).mean()                
                 
                 grad_penalty = args.r1_gamma / 2 * grad1_penalty + args.r1_gamma / 2 * grad2_penalty
+
+                if not _finite(grad_penalty):
+                    if rank == 0:
+                        print("[warn] non-finite grad_penalty; skipping batch")
+                    disc_diffusive_1.zero_grad(set_to_none=True)
+                    disc_diffusive_2.zero_grad(set_to_none=True)
+                    continue # NEWW
                 grad_penalty.backward()
             else:
                 if global_step % args.lazy_reg == 0:
@@ -469,6 +490,13 @@ def train_syndiff(rank, gpu, args):
             errD1_fake = F.softplus(output1)
             errD2_fake = F.softplus(output2)
             errD_fake = errD1_fake.mean() + errD2_fake.mean()
+
+            if not _finite(errD_fake): # NEW
+                if rank == 0:
+                    print("[warn] non-finite errD_fake; skipping batch")
+                disc_diffusive_1.zero_grad(set_to_none=True)
+                disc_diffusive_2.zero_grad(set_to_none=True)
+                continue # NEWW
             errD_fake.backward()    
             
             errD = errD_real + errD_fake
@@ -589,6 +617,15 @@ def train_syndiff(rank, gpu, args):
             torch.autograd.set_detect_anomaly(True)
             
             errG = args.lambda_l1_loss*errG_cycle +  errG_adv + errG_cycle_adv + args.lambda_l1_loss*errG_L1
+
+            if not _finite(errG):
+                if rank == 0:
+                    print("[warn] non-finite errG; skipping batch")
+                gen_diffusive_1.zero_grad(set_to_none=True)
+                gen_diffusive_2.zero_grad(set_to_none=True)
+                gen_non_diffusive_1to2.zero_grad(set_to_none=True)
+                gen_non_diffusive_2to1.zero_grad(set_to_none=True)
+                continue # NEWW
             errG.backward()
             
             optimizer_gen_diffusive_1.step()

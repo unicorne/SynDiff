@@ -33,7 +33,7 @@ TRAIN_MODULE = "train"  # e.g., "syndiff_train" if your file is syndiff_train.py
 
 # Data / output paths
 INPUT_PATH = "/home/students/studweilc1/SynDiff/my_data_group"
-OUTPUT_ROOT = "/home/students/studweilc1/SynDiff/my_results_finetuned"
+OUTPUT_ROOT = "/home/students/studweilc1/SynDiff/my_results_finetuned_VIBE"
 
 # W&B settings
 WANDB_PROJECT = "syndiff-tuning"
@@ -42,7 +42,7 @@ WANDB_GROUP = "default"
 WANDB_MODE = "online"  # set to "disabled" to run without logging
 
 # Study settings
-N_TRIALS = 20
+N_TRIALS = 90
 SEED = 1024
 MAX_EPOCHS = 1  # you can lower for quick searches
 
@@ -57,8 +57,8 @@ FIXED_OVERRIDES = {
     "save_content": False,
     "no_lr_decay": False,
     "num_epoch": MAX_EPOCHS,  # we'll set this automatically anyway
-    "contrast1": "T1_mapping_fl2d",
-    "contrast2": "DIXON_T1_mapping_fl2d",
+    "contrast1": "T1_mapping_VIBE",
+    "contrast2": "DIXON_T1_mapping_VIBE",
     "progressive": "none",
     "progressive_input": "residual",
     "progressive_combine": "sum",
@@ -70,18 +70,28 @@ FIXED_OVERRIDES = {
 # Hyperparameter search space — edit freely
 # Only parameters listed here are sampled; everything else keeps defaults or FIXED_OVERRIDES
 SEARCH_SPACE = {
-    "lr_g": ("log_uniform", 1e-5, 5e-4),
-    "lr_d": ("log_uniform", 1e-5, 5e-4),
-    "beta1": ("uniform", 0.4, 0.9),
-    "beta2": ("uniform", 0.85, 0.999),
-    "lambda_l1_loss": ("log_uniform", 1e-2, 1.0),
-    #"nz": ("int", 32, 256),
-    #"ngf": ("int", 32, 128),
-    "num_timesteps": ("int", 2, 8),
+    # keep LRs modest; let the ratio vary but within bounds
+    "lr_g": ("log_uniform", 3e-5, 1e-4),
+    "lr_d": ("log_uniform", 2e-5, 8e-5),
+
+    # Adam betas: avoid extremes that destabilize GAN-ish training
+    "beta1": ("uniform", 0.55, 0.85),
+    "beta2": ("uniform", 0.88, 0.98),
+
+    # L1 strength: too tiny => adversarial dominates; too big => hurts texture
+    "lambda_l1_loss": ("uniform", 0.3, 0.7),
+
+    # small timestep counts tend to be stabler for quick finetune
+    "num_timesteps": ("categorical", [4, 6, 8]),
+
+    # schedules: VP is generally more forgiving; geometric only in a safer band
     "use_geometric": ("categorical", [False, True]),
-    "beta_min": ("log_uniform", 1e-3, 0.5),
-    "beta_max": ("log_uniform", 1.0, 40.0),
+
+    # VP betas (absolute caps + ratio constraint applied below)
+    "beta_min": ("uniform", 0.05, 0.20),
+    "beta_max": ("uniform", 0.50, 1.50),
 }
+
 
 # =========================
 # ===== END USER EDITS ====
