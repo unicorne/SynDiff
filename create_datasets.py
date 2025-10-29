@@ -19,7 +19,7 @@ def save_dataset_as_mat(dataset, out_file, var='data_fs', compression='gzip'):
         img = dataset[i]['image']          # (1,256,256)  channel‑first
         if isinstance(img, torch.Tensor):
             img = img.cpu().numpy()
-        img = img.squeeze(0) .T            # <-- transpose here (W, H)
+        img = img.squeeze(0).T 
         imgs.append(img.astype(np.float32))
 
     imgs = np.stack(imgs, axis=0)          # (N,256,256)
