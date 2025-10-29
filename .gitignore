@@ -2,7 +2,7 @@
 *pycache*
 saved_info/*
 saved_info
-slurm/*
+slurm/outputs/*
 synthetic_data/*
 .DS_Store
 pretrained/*
@@ -11,4 +11,4 @@ data/*
 results/*
 debug.ipynb
 .env
-*.sbatch
+old/*
